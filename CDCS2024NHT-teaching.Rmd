@@ -1,0 +1,224 @@
+---
+title: "CDCS2024NHT-teaching"
+author: "Fang Yang"
+date: "2024-05-09"
+output: bookdown::pdf_document2
+toc: false
+---
+
+# Preparation
+
+```{r results='hide', warning=FALSE, message=FALSE}
+# Load packages
+library(tidyverse)
+library(patchwork)
+library(kableExtra)
+``` 
+
+```{r results='hide', warning=FALSE, message=FALSE}
+# Read data 
+data <- read_csv("Instadata.csv")
+```
+
+# Data Wrangling
+
+```{r}
+# Inspect data
+dim(data)
+
+glimpse(data)
+summary(data)
+
+
+data$Group <- as.factor(data$Group)
+levels(data$Group)
+```
+
+# Descriptive Statistics
+
+## Contingency Table
+
+```{r}
+tbl_stats <- data %>%
+  group_by(Group) %>% 
+  summarise(n = n(),
+            M = mean(Time),
+            SD = sd(Time),
+            Min = min(Time),
+            Max = max(Time))
+tbl_stats
+```
+ 
+### Think point
+
+Any problems?
+
+How to fix them?
+
+### Missing values 
+
+```{r}
+data <- data %>% drop_na(Time)
+
+# check the data
+tbl_stats <- data %>%
+  group_by(Group) %>% 
+  summarise(n = n(),
+            M = mean(Time),
+            SD = sd(Time),
+            Min = min(Time),
+            Max = max(Time))
+tbl_stats
+```
+
+
+### Impossible values 
+
+
+```{r}
+
+isTRUE(data$Time > 0)
+
+data <- data %>%
+  filter(Time > 0)
+
+# check the data
+tbl_stats <- data %>%
+  group_by(Group) %>% 
+  summarise(n = n(),
+            M = mean(Time),
+            SD = sd(Time),
+            Min = min(Time),
+            Max = max(Time))
+tbl_stats
+```
+
+
+## Visualisation
+
+```{r fig.show='hide', message=FALSE, warning=FALSE}
+plt_hist <- ggplot(data, aes(x = Time, after_stat(density))) +
+  geom_histogram(fill = "darkgreen") +
+  geom_density() +
+  facet_wrap(~Group) +
+  labs(x = "Time spent on Instagram (min)", 
+       y = "Density",
+       title = "(a)")
+plt_hist
+
+plt_box <- data %>%
+  ggplot(aes(x=Group, y = Time, fill=Group)) +
+  geom_boxplot() +
+  labs(x = "Group", 
+    y = "Time spent on Instagram daily(min)",
+       title = "(b)") +
+  theme() 
+plt_box
+
+```
+
+```{r message=FALSE, warning=FALSE}
+plt_hist | plt_box
+```
+
+
+# Null Hypothesis Testing
+
+Our Alternative Hypothesis of the research is that university students on 
+average spend more time on Instagram daily then full-time exployees.
+
+The Null Hypothesis is there is no different between the two groups.
+
+$H0$ : mu = 0
+$H1$ : mu > 0
+
+Because our hypothesis is one-tailed, i.e., has a direction. we need to 
+correctly specify the "alternative = " parameter. We will firstly check the 
+reference group, and then specify the "alternative = " accordingly.
+
+```{r}
+levels(data$Group)
+```
+
+Our hypothesised direction is Uni student > FT employee. 
+Given that our reference level is FT employee, we need to specify alternative as
+"less". This tell r that the alternative hypothesis assumes the group at the 
+reference level (FT employee) is smaller than the group at the critical level
+(Uni student). 
+
+To make things easier, we relevel the factor so that University students are the 
+reference group. We can then specify "alternative = " to "greater".
+
+```{r}
+data$Group <- relevel(data$Group, ref= "Unistudent")
+```
+
+## Two-sample t-test
+
+Next we perform a two-sample t-test. We use the default significance level .05.
+
+```{r}
+t_test <- t.test(data$Time ~ data$Group, mu = 0, alternative = "greater", 
+                 var.equal = TRUE)
+
+t_test
+```
+
+### Interpretation
+
+At the 5% significance level, a two-sample t-test was conducted to investigate
+the amount of time spent on Instagram by university students and full-time 
+employees. Results show that university students on average spend significantly 
+more time (mean = 49.70 minutes) than than full-time employees (mean = 36.95 
+minutes) on Instagram everyday (t(df=150)= 15.10, p < .001). 
+
+## Confidence Intervals
+
+We have got the results of our t-test. But how confident are we about our
+results? To answer this question, we need to calculate the confidence intervals.
+
+```{r}
+t_test_CI <- t.test(data$Time ~ data$Group, mu = 0, alternative = "two.sided", 
+                 var.equal = TRUE) 
+t_test_CI 
+```
+
+### Interpretation 
+ 
+We are 95% confident that university students on average spend between 11.08 and
+14.42 more minutes on Instagram than full-time employees.  
+
+### Think Point 
+
+What if we want to use a more rigid significance level (e.g., alpha = .01)?
+
+Tip: you just need to specify conf.level = .99.
+
+# Exercise: YOUR TURN
+
+Perform a two-sample t-test at significance level of .01 to answer the
+research question.
+
+```{r}
+# Perform a t-test at alpha = .01
+
+t_test_2 <- t.test(data$Time ~ data$Group, mu = 0, alternative = "less", 
+                  conf.level=.99,
+                 var.equal = TRUE)
+
+t_test_2
+```
+
+
+```{r}
+# get confidence intervals
+
+t_test_2_CI <- t.test(data$Time ~ data$Group, mu = 0, alternative = "two.sided", 
+                  conf.level=.99,
+                 var.equal = TRUE)
+
+t_test_2_CI
+```
+
+How would you interpret the results?
+ 

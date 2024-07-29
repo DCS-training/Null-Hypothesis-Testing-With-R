@@ -1,0 +1,315 @@
+---
+title: "CDCS2024NHT-teaching session2"
+author: "Fang Yang"
+date: "2024-05-16"
+output: bookdown::pdf_document2
+toc: false
+---
+# Preparation
+
+```{r results='hide', warning=FALSE, message=FALSE}
+# Load packages
+library(tidyverse)
+library(patchwork)
+library(kableExtra)
+library(effectsize)
+library(psych)
+
+``` 
+
+We will start with the same dateset from last week. 
+
+```{r results='hide', warning=FALSE, message=FALSE}
+
+data <- read_csv("Instadata.csv")
+
+data <- data %>% 
+  drop_na(Time) %>% 
+  mutate(Group=factor(Group)) %>% 
+  mutate(Group=fct_relevel(Group,c("Unistudent","FTemployee"))) %>%
+ arrange(Group)
+
+levels(data$Group)
+
+
+tbl_stats <- data %>%
+  group_by(Group) %>% 
+  summarise(n = n(),
+            M = mean(Time),
+            SD = sd(Time),
+            Min = min(Time),
+            Max = max(Time))
+tbl_stats
+
+```
+
+# two-sample t-test
+
+```{r}
+t_test <- t.test(data$Time ~ data$Group, 
+                 mu = 0, 
+                 alternative = "greater", 
+                 var.equal = TRUE)
+
+t_test
+```
+
+Let $\mu_s$ denote the population mean time spent on Instagram by university 
+students daily and $\mu_e$ denote the population mean time spent on Instagram 
+everyday by full-time employees. To test whether $\mu_s$ is greater than $\mu_e$,
+we performed a one-sided two-sample t-test of $H_1: \mu_s > \mu_e$ against 
+$H_0: \mu_s = \mu_e$. This allows us to discern whether the observed numeric 
+difference between the two sample means was due to an effect or if it was due 
+to random sampling variation. We used A significance level of $\alpha = .05$.
+
+
+# Effect size
+
+```{r}
+# use cohen_d() function from the 'effectsize' package to calculate effect size
+
+D <- cohens_d(data$Time ~ data$Group, 
+         mu = 0, 
+         alternative = "two.sided", 
+         var.equal = TRUE)
+
+D
+```
+
+The sample data provided very strong evidence against the null hypothesis and 
+in favour of the alternative hypothesis that on average university students indeed spend 
+more time than full-time employees everyday on Instagram. 
+
+The effect size was found to be large (Cohen's $D$ = `D`). Therefore, we 
+conclude that not only that the difference between the average time spent on 
+Instagram daily by the two groups was statistically significant, it is also of 
+practical importance.
+
+# Assumptions Check
+
+## Equality of Variance
+
+```{r}
+var.test(data$Time ~ data$Group)
+```
+
+The results suggest that the equality of variances could not be rejected 
+(F(78, 72) = 1.06, p = .79), thus it is appropriate to use two-sample t-test to
+analyse our data.
+
+
+## Independence
+
+Independence can be assumed in the design, as the two groups of participants 
+were randomly selected .
+
+## Normality
+
+Firstly we check skewness statistics. The absolute value of the skewness should
+be smaller than 1.
+
+```{r}
+skewness <- data %>% 
+  group_by(Group) %>% 
+  summarise(Skew = skew(Time))
+skewness    # Skewness is OK as it's < 1 in their absolute values
+```
+
+Next we visualise the normality of the data using qq plot.
+
+```{r}
+plt_qq <- ggplot(data, aes(colour = Group, sample = Time)) +
+  geom_qq() +
+  geom_qq_line() + 
+  labs(x = "Theoretical quantiles",
+       y = "Sample quantiles",
+       title = "QQplot of Normality")
+plt_qq
+```
+
+### Think Point
+
+The plots look okay but not the perfect. How can we be certain whether the data 
+are normally distributed?
+
+Hint: we can test this use the shapiro.test()
+
+## Shapiro.test
+
+First we subset the data by group.
+
+```{r}
+Unistudent <- data %>%
+filter(Group == "Unistudent")
+
+FTemployee <- data %>%
+filter(Group == "FTemployee")
+```
+
+Next we run a Shapiro-Wilk test for each group. Note that the $H_0$ of the test is 
+that the data is normally distributed. Thus, if you find a large p-value, 
+that means the results fail to reject the $H_0$, in other words, supporting the 
+assumption that the data is normally distributed.
+
+```{r}
+shapiroUnistudent <- shapiro.test(Unistudent$Time)
+shapiroUnistudent #Shapiro-Wilk: W = 0.98, p = .12 (> alpha), fail to reject H0
+
+shapiroFTemployee  <- shapiro.test(FTemployee$Time)
+shapiroFTemployee #Shapiro-Wilk: W = 0.98, p = .32 (> alpha),fail to reject H0
+```
+
+we can report the following.
+
+At the 5% significance level, we performed a Shapiro-Wilk test against the null hypothesis of normality of the data from the two groups, University students and
+Full-time employees. For each group, the sample data did not provide sufficient
+evidence to reject the null hypothesis of normality in the population. Therefore,
+we conclude that the results showed that the data were approximately normally distributed for both University Student group (W = 0.96, p = .53) and Full-time
+Employee group (W = 0.98, p = .32).
+
+# Exercise: Paired t-test
+
+## preparation
+
+```{r load data}
+vocabdata <- read_csv("vocabdata.csv")
+```
+
+```{r}
+dim(vocabdata)
+
+glimpse(vocabdata)
+summary(vocabdata)
+
+str(vocabdata)
+
+vocabdata$exam_time <-as.factor(vocabdata$exam_time) 
+levels(vocabdata$exam_time)
+
+
+table(is.na(vocabdata))
+```
+
+```{r}
+vocabdata <- vocabdata %>% drop_na(vocab_test_score)
+
+# check the data
+tbl_stats_vocabdata <- vocabdata %>%
+  group_by(exam_time) %>% 
+  summarise(n = n(),
+            M = mean(vocab_test_score),
+            SD = sd(vocab_test_score),
+            Min = min(vocab_test_score),
+            Max = max(vocab_test_score))
+tbl_stats_vocabdata
+```
+
+## Visualisation
+
+```{r fig.show='hide', message=FALSE, warning=FALSE}
+plt_hist_vocabdata <- ggplot(vocabdata, aes(x = vocab_test_score, 
+                                            after_stat(density))) +
+  geom_histogram(fill = "orange") +
+  geom_density() +
+  facet_wrap(~exam_time) +
+  labs(x = "Vocabulary Exam Score", 
+       y = "Density",
+       title = "(a)")
+plt_hist_vocabdata
+
+plt_box_vocabdata <- vocabdata %>%
+  ggplot(aes(x=exam_time, y = vocab_test_score, fill = exam_time)) +
+  geom_boxplot() +
+  labs(x = "When the exam was taken", 
+    y = "Vocabulary Exam Score",
+       title = "(b)") +
+  theme() 
+plt_box_vocabdata
+
+```
+
+```{r message=FALSE, warning=FALSE}
+plt_hist_vocabdata | plt_box_vocabdata
+```
+
+## Paired t-test
+
+```{r}
+pairedt_test <- t.test(vocabdata$vocab_test_score ~ vocabdata$exam_time, 
+                 paired = TRUE,
+                 mu = 0, 
+                 alternative = "greater", 
+                 )
+
+pairedt_test
+```
+
+### Confidence Intervals
+
+```{r}
+pairedt_test_CI <- t.test(vocabdata$vocab_test_score ~ vocabdata$exam_time,
+                    paired = TRUE,
+                    mu = 0, 
+                    alternative = "two.sided"
+                    ) 
+pairedt_test_CI 
+```
+
+
+### Effect Size
+
+```{r}
+D_vocabdata <- cohens_d(vocabdata$vocab_test_score ~ vocabdata$exam_time, 
+         mu = 0, 
+         alternative = "two.sided", 
+         var.equal = TRUE)
+
+D_vocabdata
+```
+
+### Assumptions Check
+
+#### Skewness
+
+```{r}
+skewness_pairedt <- vocabdata %>% 
+  group_by(exam_time) %>% 
+  summarise(Skew = skew(vocab_test_score))
+skewness_pairedt
+```
+
+#### Normality
+
+Fist visualise the normality via qqplot.  
+
+```{r}
+plt_qq_vocabdata <- ggplot(vocabdata, aes(colour = exam_time, 
+                                          sample = vocab_test_score)) +
+  geom_qq() +
+  geom_qq_line() + 
+  labs(x = "Theoretical quantiles",
+       y = "Sample quantiles",
+       title = "QQplot of Normality")
+plt_qq_vocabdata
+```
+
+```{r}
+beforedata <- vocabdata %>%
+filter(exam_time == "before")
+
+afterdata <- vocabdata %>%
+filter(exam_time == "after")
+```
+
+```{r}
+shapirobeforedata <- shapiro.test(beforedata$vocab_test_score)
+shapirobeforedata 
+
+shapiroafterdata <- shapiro.test(afterdata$vocab_test_score)
+shapiroafterdata 
+```
+
+#### Think Point
+
+The data do not meet the t-test assumption of normally distributed data. Can you
+still use paired t-test?

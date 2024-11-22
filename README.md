@@ -8,10 +8,12 @@ The course will ultimately build on an understanding of basic statistical analys
 
 Learning outcomes: 
 
-Deepen understanding of fundamental hypothesis testing concepts, including types of variables and their associations 
-Understand the different test/post hoc test and their relationship with the type of variables 
-Be able to choose the appropriate testing according to datasets and hypotheses 
-Know how to report results 
+* Deepen understanding of fundamental hypothesis testing concepts, including types of variables and their associations. 
+* Understand the different test/post hoc test and their relationship with the type of variables. 
+* Be able to choose the appropriate testing according to datasets and hypotheses. 
+* Know how to report results.
+  
+   
 This is an intermediate-level course. A basic understanding of R and statistical analyses is assumed. Attendees will need to be familiar with the RStudio interface and how to run code in it.
 
 
